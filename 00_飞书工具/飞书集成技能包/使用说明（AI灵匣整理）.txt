@@ -1,0 +1,105 @@
+【所属分类】飞书 · 飞书工具
+【技能名称】飞书集成技能包
+【技能标识】feishu-skills-installer
+【功能描述】|
+【详细概述】
+# 飞书集成技能包
+**一句话定位：**|
+> name: feishu-skills-installer description: | Feishu (Lark) skill pack installer. Downloads and installs all Feishu integration skills for OpenClaw / EnClaws — including bot setup, docs, calendar, tasks, bitable, and more. Trigger when the user wants to install Feishu skills or sa
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# Feishu Skills Installer
+
+> **Module compatibility**: Scripts are provided in both `.js` and `.mjs`. Prefer `.mjs`; if you get a module error, fall back to `.js`.
+
+Install the full Feishu skill pack by executing the commands below. All script output is single-line JSON.
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Included skills
+
+| Skill | Description |
+|-------|-------------|
+| `feishu-quick-setup` | One-click Feishu bot creation via Device Flow |
+| `feishu-auth` | User-level OAuth authorization |
+| `feishu-create-doc` | Create Feishu documents |
+| `feishu-fetch-doc` | Fetch document content |
+| `feishu-search-doc` | Search documents |
+| `feishu-update-doc` | Update document content |
+| `feishu-im-read` | Read messages from chats |
+| `feishu-chat` | Group/chat management |
+| `feishu-calendar` | Calendar events |
+| `feishu-task` | Task management |
+| `feishu-bitable` | Bitable (multi-dimensional tables) |
+| `feishu-docx-download` | Export documents as files |
+| `feishu-drive` | Drive file management |
+| `feishu-image-ocr` | Image OCR |
+| `feishu-search-user` | Search users |
+| `feishu-sheet` | Spreadsheet operations |
+| `feishu-wiki` | Wiki / knowledge base |
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Installation steps
+
+After downloading and extracting the skill pack, run the installer script.
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### Run installer
+
+```bash
+node {extracted_dir}/install.mjs
+```
+
+If you get an ESM-related error, use the CommonJS version instead:
+
+```bash
+node {extracted_dir}/install.js
+```
+
+The installer auto-detects the environment (EnClaws or OpenClaw) and copies skill directories to the correct location.
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Handling the result
+
+The installer outputs JSON. Check the `success` field:
+
+| Result | Action |
+|--------|--------|
+| `success: true` | Show the `reply` field to the user |
+| `success: false` | Show the `message` field to the user |
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Notes
+
+- Always run `install.mjs` (or `install.js`) to complete the installation; do not copy skill directories manually.
+- The installer handles environment detection, file placement, and cleanup automatically.
+- This skill only installs files. It does not perform Feishu authorization or permission checks.
+- Execute each step rather than describing it to the user.
+
+【安装方式】（三步安装 · 复制文件夹即用）
+  只需三步，即可把本技能装进AI对话框直接使用：
+
+  第1步｜复制技能文件夹：找到本技能所在的文件夹，
+       右键 → 复制路径（或直接复制整个文件夹）。
+
+  第2步｜放入智能体对话框：把复制好的文件夹路径粘贴到对话框里
+       （也可以直接把文件夹拖进对话框输入框，和发图片一样）。
+
+  第3步｜输入安装指令，把下面这句话粘贴发送：
+
+  【请解压这个技能包「飞书集成技能包」，并安装到技能目录，
+  完成后告诉我，后续对话我会直接使用它。】
+
+  · 等AI回复"安装完成"即可正常使用。
+  · 多个技能一起安装：把多个文件夹路径/文件夹一起放入对话框，
+    再发送："请把上面这些技能包全部解压安装"。
+  · 安装后直接描述需求，AI会自动调用本技能。
+
+【使用说明】
+  · 本技能包由「淘宝店：AI灵匣」整理提供，安装后即可通过自然语言触发。
+  · 具体功能以技能包内 SKILL.md 为准，如有问题可重新安装。

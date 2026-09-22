@@ -1,0 +1,328 @@
+【所属分类】飞书 · 飞书规划
+【技能名称】飞书卡片渲染
+【技能标识】feishu-card-renderer
+【功能描述】|
+【详细概述】
+# 飞书卡片渲染
+**一句话定位：**|
+> name: feishu-card-renderer description: | 通用飞书互动卡片渲染引擎。用户提供数据源（多维表格/docx文档/wiki/口头描述）和目标群聊，自动将结构化数据渲染为飞书 message card 并推送。 核心定位：把「什么数据 + 推到哪里」变成「怎么展示好看」——提供展示模板，不绑定业务场景。 触发词：推送到群、发卡片、渲染卡片、表格推送、多维表推送到群、生成运营卡片、数据看板推送。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 定位
+
+**模板引擎，不是规则手册。** 拿到数据 → 选模板 → 填内容 → 推送。用户管内容和意图，技能管展示好看。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 技能结构
+
+```
+feishu-card-renderer/
+├── SKILL.md                  ← 本文档
+├── scripts/
+│   ├── build_card.py         ← 核心：模板 + 数据 → 卡片 JSON
+│   ├── validate_card.py      ← 校验：卡片 JSON 合法性检查
+│   └── push_card.py          ← 封装：输出 message 工具调用参数
+└── templates/
+    ├── __init__.py
+    ├── dashboard.py          ← 模板 A：数据看板
+    ├── comparison.py         ← 模板 B：对比分析
+    ├── text_analysis.py      ← 模板 C：文本分析
+    └── notice.py             ← 模板 D：简讯通知
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### build_card.py — 卡片构建
+
+```bash
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 从 JSON 文件读取数据（推荐，避免 shell 转义问题）
+
+python scripts/build_card.py --template dashboard --data-file ./data.json
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 直接传 JSON 字符串（简单场景）
+
+python scripts/build_card.py --template notice --data '{"title":"通知","body":"内容"}'
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 从 stdin 读取
+
+echo '{"title":"...","rows":[...]}' | python scripts/build_card.py --template dashboard
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 格式化输出
+
+python scripts/build_card.py --template dashboard --data-file ./data.json --pretty
+```
+
+**模板名**：`dashboard` | `comparison` | `text_analysis` | `notice`
+
+**数据格式**见各模板 Python 文件中的 docstring。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### validate_card.py — 卡片校验
+
+```bash
+python scripts/validate_card.py --card-file ./card.json
+python scripts/validate_card.py --card '{"schema":"2.0",...}'
+cat card.json | python scripts/validate_card.py
+```
+
+校验通过 → `{"valid": true, "errors": [], "warnings": []}`（exit 0）
+校验失败 → `{"valid": false, "errors": [...], "warnings": [...]}`（exit 1）
+
+校验规则覆盖所有「关键约束」节的踩坑经验，包括：
+- note 标签兼容性、date data_type 禁用手法、page_size 范围、options 列格式、markdown heading 禁用等。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### push_card.py — 推送封装
+
+```bash
+python scripts/push_card.py --chat-id oc_xxx --card-file ./card.json
+```
+
+输出标准 message 工具调用 JSON，AI 直接传参即可，无需手动拼 target/channel/card 字段。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 推荐工作流
+
+```
+读取数据源 → 结构化数据 → build_card.py → validate_card.py → push_card.py → message 工具
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 标准调用格式
+
+```
+1. 读取飞书数据源（url: {链接}）。
+2. {展示意图，描述需求}。
+3. 调用 feishu-card-renderer 渲染并推送卡片到群 chat:{chat_id}。
+4. 发完卡片后回复 NO_REPLY，不要输出任何其他文字。
+```
+
+| 占位符 | 说明 | 示例 |
+|--------|------|------|
+| `{链接}` | 完整 URL，技能自动识别类型 | `/base/...?table=...` / `/docx/...` / `/wiki/...` |
+| `{展示意图，描述需求}` | 想怎么看这批数据（可选） | 「总结问题」「只看未完成」「全量列表」 |
+| `{chat_id}` | 目标群 | `oc_a48a53d3294b1d821287202ada93e7a0` |
+
+缺参数就问，不猜。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 执行流程
+
+```
+确认参数 → 识别来源 → 读取数据 → 选模板 → 构建卡片 → 校验 → 推送 → NO_REPLY
+                                              ↑                        ↑
+                                    build_card.py              push_card.py
+                                              ↓
+                                    validate_card.py
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 数据源识别
+
+按 URL 特征自动路由：
+
+| URL 特征 | 数据源 | 读取工具 |
+|----------|--------|---------|
+| `/base/{token}?table={id}` | 多维表格 | `feishu_bitable_list_fields` → `list_records` |
+| `/docx/{token}` | 飞书文档 | `feishu_doc read`（含表格解析） |
+| `/wiki/{token}` | 知识库节点 | `feishu_wiki get` 拿到 obj_token 后同上 |
+| 口头描述 | 直接内容 | 结构化后走卡片构建 |
+
+多维表字段自适应（不硬编码列名）：按「名称/负责人/状态/分类/优先级/日期/描述」语义匹配。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 模板 A：数据看板（结构化行数据）
+
+**适用**：多维表、任务表、统计表等有明确行列的数据
+
+**骨架**：
+
+```
+header(title)
+→ column_set（概览指标：总数、完成率、待办数等）
+→ hr
+→ table（明细数据）
+→ hr
+→ markdown（一句话结论）
+```
+
+**概览指标**用 `column_set` 双栏 / 三栏，纯 `markdown` 文字，不带复杂格式。
+**明细**用 `table` 组件，状态列用 `options` 类型带颜色标签。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 模板 B：对比分析
+
+**适用**：两组或多组数据对比、前后变化、差异分析
+
+**骨架**：
+
+```
+header(title)
+→ markdown（背景一句话）
+→ hr
+→ table（对比明细：列=对比维度）
+→ hr
+→ markdown（结论）
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 模板 C：文本分析（非结构化文档）
+
+**适用**：散文、报告、议论文等无表格的长文
+
+**骨架**：
+
+```
+header(title)
+→ markdown（核心提炼 2-3 句）
+→ hr
+→ 中间区：有对比用 table，无可提炼为 markdown 块
+→ hr
+→ markdown（关键引用/佐证）
+→ hr
+→ markdown（作者意图一句话）
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 模板 D：简讯 / 通知
+
+**适用**：纯文字消息、公告、提醒
+
+**骨架**：
+
+```
+header(title)
+→ markdown（正文）
+→ markdown（补充/行动指引）
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 模板选型原则
+
+| 数据特征 | 模板 |
+|----------|------|
+| 有明确行列、≥3 条同构记录 | A：数据看板 |
+| 两组或多组对照 | B：对比分析 |
+| 长文本、无表格 | C：文本分析 |
+| 纯文字通知 | D：简讯 |
+
+**空白数据** → 卡片只放「📊 暂无数据」→ NO_REPLY。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Table 组件格式
+
+```json
+{
+  "schema": "2.0",
+  "config": { "wide_screen_mode": true },
+  "header": {
+    "title": { "tag": "plain_text", "content": "表格标题" }
+  },
+  "body": {
+    "elements": [
+      {
+        "tag": "table",
+        "page_size": 10,
+        "columns": [
+          { "data_type": "text",    "display_name": "列名", "name": "col" },
+          { "data_type": "options", "display_name": "状态", "name": "status" }
+        ],
+        "rows": [
+          { "col": "值", "status": [{ "color": "green", "text": "已完成" }] }
+        ]
+      }
+    ]
+  }
+}
+```
+
+要点：
+- 必须包含顶层 `"schema": "2.0"`，表格组件放在 `body.elements`中
+- `page_size`有效范围为 **1 ~ 10**（原 1.0 中可设 15 但超出限制会被截断）
+- `header_style`在 2.0 中不再单独存在，可通过 `header.title`自定义样式
+
+颜色语义：
+
+| 语义 | color |
+|------|-------|
+| 完成/正常 | green |
+| 进行中 | blue |
+| 待处理 | grey |
+| 等待/暂停 | orange |
+| 阻塞/失败 | red |
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 关键约束（来自实测踩坑）
+
+| 做法 | 原因 |
+|------|------|
+| `table` 优先于 markdown 表格 | 飞书卡片 markdown 不渲染表格 |
+| `column_set` 内只用纯文本 | markdown 表格在 column_set 中管道符原样显示 |
+| 日期不用 `date` data_type | 实测 400 错误 |
+| 不用 `template_id` + 变量 | 模板无变量定义，内容会被静默忽略 |
+| 推送用 `message` + `card` | 不用外部脚本 |
+| 2.0 卡片仅支持飞书客户端 ≥ V7.20 | 低于此版本会显示"请升级客户端" |
+| **markdown 块禁用 `#` / `##`** | 飞书卡片 markdown 不支持 heading，`##` 会原样显示成 `##` 文字 |
+| 替代方案：用 `**粗体**` 或 `—` 分隔 | 例如 `**标题一**` 替代 `## 标题一` |
+| **`note` 标签禁用** | schema 2.0 不兼容，会 400 错误；用 `markdown` 块替代 |
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 推送
+
+```
+message 工具：
+  action:  send
+  channel: feishu
+  target:  chat:{chat_id}
+  card:    {完整卡片 JSON（2.0 格式）}
+```
+
+推送成功 → NO_REPLY。不要输出任何其他文字。
+
+【安装方式】（三步安装 · 复制文件夹即用）
+  只需三步，即可把本技能装进AI对话框直接使用：
+
+  第1步｜复制技能文件夹：找到本技能所在的文件夹，
+       右键 → 复制路径（或直接复制整个文件夹）。
+
+  第2步｜放入智能体对话框：把复制好的文件夹路径粘贴到对话框里
+       （也可以直接把文件夹拖进对话框输入框，和发图片一样）。
+
+  第3步｜输入安装指令，把下面这句话粘贴发送：
+
+  【请解压这个技能包「飞书卡片渲染」，并安装到技能目录，
+  完成后告诉我，后续对话我会直接使用它。】
+
+  · 等AI回复"安装完成"即可正常使用。
+  · 多个技能一起安装：把多个文件夹路径/文件夹一起放入对话框，
+    再发送："请把上面这些技能包全部解压安装"。
+  · 安装后直接描述需求，AI会自动调用本技能。
+
+【使用说明】
+  · 本技能包由「淘宝店：AI灵匣」整理提供，安装后即可通过自然语言触发。
+  · 具体功能以技能包内 SKILL.md 为准，如有问题可重新安装。

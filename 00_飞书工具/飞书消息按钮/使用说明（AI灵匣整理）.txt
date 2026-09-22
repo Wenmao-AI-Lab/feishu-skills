@@ -1,0 +1,203 @@
+【所属分类】飞书 · 飞书工具
+【技能名称】飞书消息按钮
+【技能标识】feishubutton
+【功能描述】Feishu Interactive Cards & Buttons Skill。Complete skill package for Hermes Agent to send interactive cards with buttons in Feishu.
+【详细概述】
+# 飞书消息按钮
+**一句话定位：**Feishu Interactive Cards & Buttons Skill。Complete skill package for Hermes Agent to send interactive cards with buttons in Feishu.
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# Feishu Interactive Cards & Buttons Skill
+
+Complete skill package for Hermes Agent to send interactive cards with buttons in Feishu.
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Package Structure
+
+```
+feishu-buttons/
+├── SKILL.md          # This documentation
+├── src/              # Python source files
+│   ├── approval.py   # Main approval workflow with buttons
+│   ├── builder.py    # Card building utilities
+│   └── cardkit.py   # Card sending helpers
+└── scripts/         # Utility scripts (optional)
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Installation
+
+1. Copy this skill folder to your Hermes Agent's `skills/social-media/` directory
+2. The Python files in `src/` should be accessible from your Hermes installation
+3. Requires `hermes_feishu_plugin` to be installed for full functionality
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 1. Interactive Card Format
+
+Feishu interactive cards use a JSON structure:
+
+```json
+{
+  "config": {"wide_screen_mode": true},
+  "header": {
+    "title": {"content": "Title", "tag": "plain_text"},
+    "template": "orange"
+  },
+  "elements": [
+    {"tag": "markdown", "content": "Message content"},
+    {
+      "tag": "action",
+      "actions": [
+        {
+          "tag": "button",
+          "text": {"tag": "plain_text", "content": "Button Label"},
+          "type": "primary",
+          "value": {"action": "value", "data": "payload"}
+        }
+      ]
+    }
+  ]
+}
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 2. Button Types
+
+| type | Color | Use Case |
+|------|-------|----------|
+| `primary` | Blue | Main action |
+| `default` | Grey | Secondary action |
+| `danger` | Red | Destructive action |
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 3. Action Value
+
+The `value` field in a button is passed back when clicked:
+
+```json
+"value": {
+  "hermes_action": "approve_once",
+  "approval_id": "123",
+  "session_key": "session123",
+  "chat_id": "chat123"
+}
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### Send Approval Card
+
+```python
+from src.approval import send_approval_card
+
+card = {
+    "config": {"wide_screen_mode": True},
+    "header": {
+        "title": {"content": "⚠️ Confirm Action", "tag": "plain_text"},
+        "template": "orange"
+    },
+    "elements": [
+        {"tag": "markdown", "content": "Do you want to proceed?"},
+        {
+            "tag": "action",
+            "actions": [
+                {"tag": "button", "text": {"tag": "plain_text", "content": "✅ Confirm"}, "type": "primary", "value": {"action": "confirm"}},
+                {"tag": "button", "text": {"tag": "plain_text", "content": "❌ Cancel"}, "type": "danger", "value": {"action": "cancel"}}
+            ]
+        }
+    ]
+}
+
+await adapter.send_card(chat_id, card)
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### Handle Button Callback
+
+```python
+async def handle_callback(callback_data):
+    action = callback_data.get("action")
+    if action == "confirm":
+        # Process confirmation
+        pass
+    elif action == "cancel":
+        # Process cancellation
+        pass
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### approval.py
+
+Main implementation for approval workflow with buttons:
+- `send_exec_approval()` - Send approval card with buttons
+- `handle_card_action()` - Process button click callbacks
+- `update_approval_card()` - Update card after action
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### builder.py
+
+Card building utilities:
+- `build_streaming_pre_answer_card()` - Build streaming response card
+- `build_complete_card()` - Build final response card
+- `split_reasoning_text()` - Extract reasoning from response
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### cardkit.py
+
+Low-level card sending:
+- `send_interactive_card()` - Send interactive card
+- `patch_interactive_card()` - Update existing card
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Dependencies
+
+- Python 3.11+
+- `hermes_feishu_plugin` (for Feishu adapter)
+- `json` (standard library)
+- `asyncio` (standard library)
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Platform Notes
+
+This skill is specifically designed for Feishu (Lark) platform. For other messaging platforms:
+
+- **Discord**: Use Discord's component-based buttons
+- **Telegram**: Use inline keyboards
+- **Slack**: Use interactive buttons
+
+Each platform has its own message format for interactive elements.
+
+【安装方式】（三步安装 · 复制文件夹即用）
+  只需三步，即可把本技能装进AI对话框直接使用：
+
+  第1步｜复制技能文件夹：找到本技能所在的文件夹，
+       右键 → 复制路径（或直接复制整个文件夹）。
+
+  第2步｜放入智能体对话框：把复制好的文件夹路径粘贴到对话框里
+       （也可以直接把文件夹拖进对话框输入框，和发图片一样）。
+
+  第3步｜输入安装指令，把下面这句话粘贴发送：
+
+  【请解压这个技能包「飞书消息按钮」，并安装到技能目录，
+  完成后告诉我，后续对话我会直接使用它。】
+
+  · 等AI回复"安装完成"即可正常使用。
+  · 多个技能一起安装：把多个文件夹路径/文件夹一起放入对话框，
+    再发送："请把上面这些技能包全部解压安装"。
+  · 安装后直接描述需求，AI会自动调用本技能。
+
+【使用说明】
+  · 本技能包由「淘宝店：AI灵匣」整理提供，安装后即可通过自然语言触发。
+  · 具体功能以技能包内 SKILL.md 为准，如有问题可重新安装。

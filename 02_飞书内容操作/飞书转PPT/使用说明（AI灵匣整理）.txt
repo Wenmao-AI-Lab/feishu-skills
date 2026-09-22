@@ -1,0 +1,236 @@
+【所属分类】飞书 · 飞书内容操作
+【技能名称】飞书转PPT
+【技能标识】feishu-to-ppt
+【功能描述】从飞书多维表格（Base）拉数据，按字段映射转写到本地 PPT 文件指定表格位置。绝不改变 PPT 其他元素和格式。适用于"飞书多维表格数据填 PPT""DTS/规格表自动填表""多记录批量填一份 PPT"等场景。
+【详细概述】
+# 飞书转PPT
+**一句话定位：**从飞书多维表格（Base）拉数据，按字段映射转写到本地 PPT 文件指定表格位置。绝不改变 PPT 其他元素和格式。适用于"飞书多维表格数据填 PPT""DTS/规格表自动填表""多记录批量填一份 PPT"等场景。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# feishu-to-ppt
+
+把飞书多维表格里的数据按映射填进本地 PPT 的指定表格,**绝不**改 PPT 其他元素。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 何时触发
+
+- 用户给了一个飞书 wiki 或 base 链接,要求把数据填到本地 PPT
+- 用户说"按 PPT 红色标注/示例表填飞书数据""多记录填一份 PPT""DTS 表自动填充"
+- 关键词:飞书多维表格 + PPT 填充、Base 数据写 PPT、字段映射
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 硬性约束
+
+1. **无损**:仅替换被改 slide 的 XML part,其余 zip entry 字节级原样保留
+2. **校验**:每次写入后用 zip entry diff 工具验证只有目标 slide 变化
+3. **保留 rPr**:填文本时保留原 cell 的字体(latin/ea typeface),只覆盖文本内容
+4. **合并单元格**:`gridSpan=N` 是主格,`hMerge=1` 是子格不能编辑
+5. **示例驱动映射**:PPT 有"标注表+示例表"两表时,优先用值反推(见下方)
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 1. 解析链接,定位 Base
+
+```bash
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# Wiki 链接 → obj_token
+
+lark-cli wiki spaces get_node --params '{"token":"<WIKI_TOKEN>"}' --as user
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 返回中 node.obj_type==bitable, node.obj_token 即 base-token
+
+```
+
+授权流程:`lark-cli auth login --scope "base:field:read base:record:read base:view:read"`,
+后台跑后用户浏览器打开 device URL 完成授权。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 2. 拿真实字段顺序(关键!)
+
+`+field-list` 返回的字段数和顺序与 `+record-list` **不一致**(实测 100 vs 143)。
+**必须**以 `+record-list` 返回的 `data.fields`(字段名数组)作为权威顺序。
+
+```bash
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# PowerShell 下用 JSON 文件 + lc.py 包装器转义参数
+
+echo '["base","+record-list","--base-token","<T>","--table-id","<TABLE>","--limit","1","--offset","0","--format","json","--as","user"]' > _cmd.json
+python lc.py _cmd.json
+```
+
+返回的 `data.fields[0]` 通常就是"编号"字段(formula)。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 3. 翻页拉全量
+
+```bash
+offset=0; while true; do
+  CMD="[\"base\",\"+record-list\",\"--base-token\",\"<T>\",\"--table-id\",\"<TABLE>\",\"--limit\",\"200\",\"--offset\",\"$offset\",\"--format\",\"json\",\"--as\",\"user\"]"
+  ...
+  offset=$((offset+200)); has_more=...
+done
+```
+
+存为 `records.json`,每条记录是 `dict(zip(fields, row))`。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 4. 扫 PPT 找锚点
+
+- 用 python-pptx 列所有 slide/shape,定位 `has_table` 的图形
+- 找"标注表"(红字字段名)和"示例表"(Fxxxx 示例值),两者结构相同并排摆放
+- 扫红色字体:`for run in p.runs: if run.font.color.rgb == (255,0,0): print(...)`
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 5. 值反推映射(重要)
+
+飞书表字段名常与 PPT 红色标注字面不一致(历史遗留、语义错位)。**别用字段名字面匹配**。
+
+```python
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 取示例表所有非空值
+
+example_vals = {(ri,ci): tbl.cell(ri,ci).text.strip() for ...}
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 取飞书 F0338 记录所有非空字段
+
+feishu_rec = [r for r in records if r['编号']=='F0338'][0]
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 反向索引
+
+val2fields = {}
+for k,v in feishu_rec.items():
+    s = norm(v)  # list 取首项,附件返回 None
+    if s: val2fields.setdefault(s, []).append(k)
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 匹配
+
+mapping = {}
+for pos, val in example_vals.items():
+    cands = val2fields.get(val, [])
+    if len(cands)==1: mapping[pos] = cands[0]
+    elif len(cands)>1: mapping[pos] = cands[0]  # 歧义按语义选
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 6. 填 PPT + 字体后处理
+
+**两阶段**:
+- 阶段 A(python-pptx):把映射值写入 cell
+- 阶段 B(lxml):统一对被改 run 应用样式:
+  - **字体**:`latin typeface="微软雅黑"`,`ea typeface="微软雅黑"`
+  - **字号**:`sz=800`(8pt)
+  - **颜色**:`solidFill` → `srgbClr val="000000"`(黑色)
+  - **加粗/斜体**:`b="0"`、`i="0"`(清除)
+  - **基准件字段**(PPT 位置 R0C0 或标注"基准件"的列): `u="sng"`(单下划线)
+
+写入时注意:
+- `cell.text_frame` 全 run 文本要保留原有 rPr(latin/ea typeface 可保留)
+- 不要只改 runs[0].text,其余 run 也清空,避免残留
+- 锚点列(编号)即使没值也用编号本身填回
+- `endParaRPr` 也要同步改字号+字体,否则新输入文本沿用旧样式
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 7. 无损校验
+
+```python
+import zipfile
+with zipfile.ZipFile(src) as z1, zipfile.ZipFile(dst) as z2:
+    n1 = {i.filename for i in z1.infolist()}
+    n2 = {i.filename for i in z2.infolist()}
+    print('only_in_src:', n1-n2)
+    print('only_in_dst:', n2-n1)
+    changed = [i for i in z1.infolist() if i.filename in n2 and z1.read(i.filename) != z2.read(i.filename)]
+    print('changed:', [i.filename for i in changed])
+```
+
+预期:只有 `ppt/slides/slideN.xml` 变化,无新增/删除 entry。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 关键陷阱(必读)
+
+1. **PowerShell JSON 转义** → 用 JSON 命令文件 + lc.py 包装器
+2. **record-list 与 field-list 字段顺序不一致** → 用 record-list 的 `data.fields`
+3. **合并单元格** → gridSpan 主格可写,hMerge 子格不能
+4. **endParaRPr** → 空段落也有,字号同步改它,否则新输入文本用旧字号
+5. **附件过滤** → `isinstance(v[0], dict) and 'file_token' in v[0]`
+6. **飞书字段名语义错位** → 用值反推,别用字面匹配
+7. **8pt 黑色强制** → 红色残留 rPr 会让文字看不见
+8. **下载附件** → 用 `docs +media-download`,**不要**用 `drive +download`(对 Base 附件 403)
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 依赖
+
+- Python 3.13+
+- `pip install python-pptx lxml`
+- lark-cli 1.0.51+ (Windows 路径)
+- 飞书 user 身份授权 scope: `base:field:read base:record:read base:view:read`
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 复用脚本(本项目已验证)
+
+- `lc.py`:JSON 命令文件 → lark-cli 子进程包装器
+- `verify_zip.py`:zip entry 级别 diff 校验
+- `fetch_v2.py`:按 record-list 真实 143 列拉全量
+- `force_font8_v2.py`:lxml 强制 sz+color 后处理
+- `fill_dts_v3.py`:python-pptx 填表(基于 MAPPING dict)
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 完整链路示例(7 表批量)
+
+```python
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 4. verify_zip.py <src.pptx> <final.pptx>  (entry diff)
+
+```
+
+【安装方式】（三步安装 · 复制文件夹即用）
+  只需三步，即可把本技能装进AI对话框直接使用：
+
+  第1步｜复制技能文件夹：找到本技能所在的文件夹，
+       右键 → 复制路径（或直接复制整个文件夹）。
+
+  第2步｜放入智能体对话框：把复制好的文件夹路径粘贴到对话框里
+       （也可以直接把文件夹拖进对话框输入框，和发图片一样）。
+
+  第3步｜输入安装指令，把下面这句话粘贴发送：
+
+  【请解压这个技能包「飞书转PPT」，并安装到技能目录，
+  完成后告诉我，后续对话我会直接使用它。】
+
+  · 等AI回复"安装完成"即可正常使用。
+  · 多个技能一起安装：把多个文件夹路径/文件夹一起放入对话框，
+    再发送："请把上面这些技能包全部解压安装"。
+  · 安装后直接描述需求，AI会自动调用本技能。
+
+【使用说明】
+  · 本技能包由「淘宝店：AI灵匣」整理提供，安装后即可通过自然语言触发。
+  · 具体功能以技能包内 SKILL.md 为准，如有问题可重新安装。

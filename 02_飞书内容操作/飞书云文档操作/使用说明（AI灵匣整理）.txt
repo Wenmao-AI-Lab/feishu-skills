@@ -1,0 +1,256 @@
+【所属分类】飞书 · 飞书内容操作
+【技能名称】飞书云文档操作
+【技能标识】lark-doc-ops
+【功能描述】飞书云文档操作指南：读取、创建、编辑飞书文档（Docx/Wiki）。覆盖XML/Markdown格式选择、常用操作、关键避坑。需要安装lark-cli。
+【详细概述】
+# 飞书云文档操作
+**一句话定位：**飞书云文档操作指南：读取、创建、编辑飞书文档（Docx/Wiki）。覆盖XML/Markdown格式选择、常用操作、关键避坑。需要安装lark-cli。
+> name: lark-doc-ops description: "飞书云文档操作指南：读取、创建、编辑飞书文档（Docx/Wiki）。覆盖XML/Markdown格式选择、常用操作、关键避坑。需要安装lark-cli。" version: 1.0.0 license: MIT platforms: [linux, macos, windows] metadata: agent_created: true tags: [飞书, Lark, 文档, Docx, Wiki, 办公自动化] requires: bins: ["lark-cli"]
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 飞书云文档操作
+
+**前置条件：需要安装 lark-cli 并完成认证（`lark-cli auth login`）。**
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 核心操作
+
+```bash
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 读取文档
+
+lark-cli docs +fetch --doc "文档URL或token"
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 创建文档
+
+lark-cli docs +create --content '<title>标题</title><p>内容</p>'
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 追加内容
+
+lark-cli docs +update --doc "文档URL或token" --command append --content '<p>内容</p>'
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 覆盖全文
+
+lark-cli docs +update --doc "文档URL或token" --command overwrite --content '<p>新内容</p>'
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 身份选择
+
+- 默认使用 `--as user`（以用户身份操作）
+- 需要bot身份时加 `--as bot`
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### XML（默认，推荐用于精准编辑）
+
+- 适用：局部编辑（str_replace、block_insert_after、block_replace等）
+- 优势：稳定表达block结构和样式，局部精修更可控
+- 示例：`--doc-format xml`（默认值，可省略）
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### Markdown（适用于整段写入）
+
+- 适用：创建文档、整段append/overwrite、用户提供.md文件
+- 优势：语法简单，适合快速写入
+- 示例：`--doc-format markdown`
+
+**决策规则：**
+- 创建/导入场景：XML和Markdown都可以，用户提供.md时用Markdown
+- 精准编辑场景：优先XML
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 常用操作速查
+
+| 操作 | 命令 |
+|------|------|
+| 读取全文 | `docs +fetch --doc <token>` |
+| 读取带block ID | `docs +fetch --doc <token> --detail with-ids` |
+| 创建文档 | `docs +create --content '<title>...</title><p>...</p>'` |
+| 追加内容 | `docs +update --doc <token> --command append --content '...'` |
+| 覆盖全文 | `docs +update --doc <token> --command overwrite --content '...'` |
+| 替换文本 | `docs +update --doc <token> --command str_replace --old '旧文本' --new '新文本'` |
+| 插入图片 | `docs +media-insert --doc <token> --file ./image.png` |
+| 下载图片 | `docs +media-download --doc <token>` |
+| 查看历史 | `docs +history-list --doc <token>` |
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Block ID 生命周期
+
+**关键规则：** 连续执行多个写操作时，必须判断旧block ID是否还能复用：
+
+- `overwrite` / `block_replace` / `block_delete` 后 → **不要**复用受影响的旧ID
+- 插入/复制操作后 → 需要重新fetch才能拿到新block ID
+- 安全的做法：每次写操作后重新fetch获取最新block ID
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 嵌入对象处理
+
+文档中嵌入的电子表格、多维表格、画板，需要先提取token再切到对应工具：
+
+| 标签 | 提取字段 | 操作工具 |
+|------|---------|---------|
+| `<sheet token="..." sheet-id="...">` | token → spreadsheet_token | lark-sheets |
+| `<bitable token="..." table-id="...">` | token → app_token | lark-base |
+| 画板/whiteboard | 用 `docs +media-download --type whiteboard` | - |
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 文档复制
+
+需要复制文档时，使用 `lark-cli drive files copy`，不要用 `docs +fetch` + `docs +create` 重建正文。
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 写入相关
+
+- ⚠️ `--content @file` 的文件必须在当前工作目录下（不能是/tmp/等绝对路径），先cp到cwd再写
+- ⚠️ 不要用 `--overwrite`（不存在的flag），用 `--command overwrite`
+- ⚠️ overwrite会清空全文再写入，确保内容是完整的
+- ⚠️ 替换操作后用 `docs +fetch` 检查是否有残留文本块
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 读取相关
+
+- ⚠️ 默认fetch是simple模式（无block ID），需要block ID时加 `--detail with-ids`
+- ⚠️ 大文档（>5000字符）建议分段读取或只读outline
+- ⚠️ 文档URL中如果有 `#share-...` 锚点，优先使用锚点方式读取
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 格式相关
+
+- ⚠️ XML中特殊字符需要转义（`<` → `&lt;`，`>` → `&gt;`，`&` → `&amp;`）
+- ⚠️ Markdown表格在飞书中会转为HTML，复杂表格建议用XML
+- ⚠️ 飞书不支持所有Markdown语法（如嵌套列表、某些HTML标签）
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 权限相关
+
+- ⚠️ 首次使用前必须 `lark-cli auth login` 完成认证
+- ⚠️ 某些操作需要特定scope（如drive权限），报错时检查 `lark-cli auth status`
+- ⚠️ 操作他人文档需要文档权限（至少可编辑）
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 读取→分析→更新
+
+```bash
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 1. 读取文档
+
+lark-cli docs +fetch --doc "abc123" --as user
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 3. 局部更新
+
+lark-cli docs +update --doc "abc123" --command str_replace \
+  --old "旧段落内容" --new "新段落内容" --as user
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 4. 验证更新
+
+lark-cli docs +fetch --doc "abc123" --as user
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 从Markdown文件创建文档
+
+```bash
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 1. 准备markdown文件（必须在cwd下）
+
+cp /tmp/my-doc.md ./my-doc.md
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 2. 创建文档
+
+lark-cli docs +create --doc-format markdown --content @my-doc.md --as user
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 批量追加内容
+
+```bash
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 1. 读取当前内容确认
+
+lark-cli docs +fetch --doc "abc123" --as user
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# 2. 追加新章节
+
+lark-cli docs +update --doc "abc123" --command append \
+  --content '<h2>新章节</h2><p>内容...</p>' --as user
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 不在本 Skill 范围
+
+- 文档评论管理 → 使用 lark-drive
+- 电子表格数据操作 → 使用 lark-sheets
+- 多维表格操作 → 使用 lark-base
+- 云空间文件上传/下载/权限 → 使用 lark-drive
+- 知识库节点管理 → 使用 lark-wiki
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## 更多信息
+
+完整文档和高级用法请参考 lark-cli 官方文档或执行：
+```bash
+lark-cli docs --help
+```
+
+【安装方式】（三步安装 · 复制文件夹即用）
+  只需三步，即可把本技能装进AI对话框直接使用：
+
+  第1步｜复制技能文件夹：找到本技能所在的文件夹，
+       右键 → 复制路径（或直接复制整个文件夹）。
+
+  第2步｜放入智能体对话框：把复制好的文件夹路径粘贴到对话框里
+       （也可以直接把文件夹拖进对话框输入框，和发图片一样）。
+
+  第3步｜输入安装指令，把下面这句话粘贴发送：
+
+  【请解压这个技能包「飞书云文档操作」，并安装到技能目录，
+  完成后告诉我，后续对话我会直接使用它。】
+
+  · 等AI回复"安装完成"即可正常使用。
+  · 多个技能一起安装：把多个文件夹路径/文件夹一起放入对话框，
+    再发送："请把上面这些技能包全部解压安装"。
+  · 安装后直接描述需求，AI会自动调用本技能。
+
+【使用说明】
+  · 本技能包由「淘宝店：AI灵匣」整理提供，安装后即可通过自然语言触发。
+  · 具体功能以技能包内 SKILL.md 为准，如有问题可重新安装。

@@ -1,0 +1,211 @@
+【所属分类】飞书 · 飞书制作
+【技能名称】飞书发送图片
+【技能标识】feishu-send-image-message
+【功能描述】Upload a local image file to Feishu and send it as an image message into the current Feishu conversation.
+【详细概述】
+# 飞书发送图片
+**一句话定位：**Upload a local image file to Feishu and send it as an image message into the current Feishu conversation.
+> name: feishu-send-image-message description: Upload a local image file to Feishu and send it as an image message into the current Feishu conversation. read_when: - The user asks to send a local image into Feishu - The user asks to upload an image file and post it into the current
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+# Feishu Send Image Message
+
+Upload a local image file to Feishu and send it into the current Feishu conversation as an image message.
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Purpose
+
+Use this skill when the user already has a local image file and wants it sent into the active Feishu chat.
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## What this skill does
+
+1. Read Feishu app credentials from `~/.openclaw/openclaw.json`
+2. Request a `tenant_access_token`
+3. Upload the local image to Feishu to obtain an `image_key`
+4. Send the image message to the current chat
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## When to use
+
+- Send a local screenshot into Feishu
+- Upload an existing image file and post it to the current conversation
+- Deliver a local image as a Feishu image message
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Requirements
+
+- `curl`
+- `jq`
+- Feishu app configuration in `~/.openclaw/openclaw.json`
+- Feishu app permission: `im:resource`
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Inputs
+
+- Local image file path
+- Current Feishu recipient/chat context
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Outputs
+
+- Feishu `image_key`
+- Feishu `message_id`
+- Confirmation that the image was sent
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Preconditions
+
+- The current conversation is handled by OpenClaw in Feishu
+- The Feishu app credentials already exist in `~/.openclaw/openclaw.json`
+- The current Feishu app has permission to upload images and send messages
+- The input image file exists locally and is readable
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 1) Read Feishu credentials
+
+Read `~/.openclaw/openclaw.json` and extract:
+
+- `channels.feishu.appId`
+- `channels.feishu.appSecret`
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 2) Get a tenant access token
+
+```bash
+curl -s -X POST \
+  "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "app_id": "<appId>",
+    "app_secret": "<appSecret>"
+  }'
+```
+
+Use the returned `tenant_access_token` for subsequent requests.
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 3) Upload the image
+
+```bash
+curl -s -X POST \
+  "https://open.feishu.cn/open-apis/im/v1/images" \
+  -H "Authorization: Bearer <tenant_access_token>" \
+  -F "image_type=message" \
+  -F "image=@/path/to/image.png"
+```
+
+Extract `data.image_key` from the response.
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+### 4) Send the image message
+
+```bash
+curl -s -X POST \
+  "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id" \
+  -H "Authorization: Bearer <tenant_access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "receive_id": "<current_open_id>",
+    "msg_type": "image",
+    "content": "{\"image_key\":\"<image_key>\"}"
+  }'
+```
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Implementation notes
+
+- The image upload API requires `image_type=message`
+- The message payload must use `msg_type=image`
+- The `content` field must be a JSON string that contains `image_key`
+- Use the correct `receive_id_type` for the current conversation
+- Keep the local image file until the upload succeeds
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Error handling
+
+- If Feishu credentials are missing, report that `~/.openclaw/openclaw.json` is not configured
+- If the image file is missing or unreadable, report the file path problem
+- If the upload fails, surface the Feishu error code and message
+- If the send fails, verify the `receive_id_type` and target recipient ID
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Safety
+
+- Only upload files that the user explicitly asked to send
+- Do not modify the image contents unless the user requested editing
+- If the file path is ambiguous, confirm the exact local file before uploading
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Success report
+
+When successful, report:
+
+- image file path
+- uploaded `image_key`
+- Feishu `message_id`
+- confirmation that the image was sent to the current chat
+
+━━━━━━━━━━━━━━━━━━━━ 淘宝店AI灵匣 ━━━━━━━━━━━━━━━━━━━━
+
+## Example end-to-end sketch
+
+```bash
+APP_ID="<appId>"
+APP_SECRET="<appSecret>"
+TOKEN=$(curl -s -X POST \
+  "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal" \
+  -H "Content-Type: application/json" \
+  -d '{"app_id":"'"$APP_ID"'","app_secret":"'"$APP_SECRET"'"}' | jq -r '.tenant_access_token')
+
+IMAGE_KEY=$(curl -s -X POST \
+  "https://open.feishu.cn/open-apis/im/v1/images" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "image_type=message" \
+  -F "image=@/path/to/image.png" | jq -r '.data.image_key')
+
+curl -s -X POST \
+  "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"receive_id":"<current_open_id>","msg_type":"image","content":"{\"image_key\":\"'"$IMAGE_KEY"'\"}"}'
+```
+
+【安装方式】（三步安装 · 复制文件夹即用）
+  只需三步，即可把本技能装进AI对话框直接使用：
+
+  第1步｜复制技能文件夹：找到本技能所在的文件夹，
+       右键 → 复制路径（或直接复制整个文件夹）。
+
+  第2步｜放入智能体对话框：把复制好的文件夹路径粘贴到对话框里
+       （也可以直接把文件夹拖进对话框输入框，和发图片一样）。
+
+  第3步｜输入安装指令，把下面这句话粘贴发送：
+
+  【请解压这个技能包「飞书发送图片」，并安装到技能目录，
+  完成后告诉我，后续对话我会直接使用它。】
+
+  · 等AI回复"安装完成"即可正常使用。
+  · 多个技能一起安装：把多个文件夹路径/文件夹一起放入对话框，
+    再发送："请把上面这些技能包全部解压安装"。
+  · 安装后直接描述需求，AI会自动调用本技能。
+
+【使用说明】
+  · 本技能包由「淘宝店：AI灵匣」整理提供，安装后即可通过自然语言触发。
+  · 具体功能以技能包内 SKILL.md 为准，如有问题可重新安装。
